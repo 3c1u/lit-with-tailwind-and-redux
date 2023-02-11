@@ -2,17 +2,24 @@ import { LitElement } from 'lit'
 import type { Store, Action } from 'redux'
 import { ReduxReactiveController } from '~/helpers/redux/ReduxReactiveController'
 
+const controllerSym = Symbol('~/src/helpers/redux__ReduxReactiveController')
+
 const selectorBase = <_RootState, _Value>(
   store: Store<_RootState, Action>,
   selector: (state: _RootState) => _Value,
 ) => {
   return (target: LitElement, propertyKey: string) => {
-    let isSubscribed = false
-
     Object.defineProperty(target, propertyKey, {
       get() {
-        if (!isSubscribed) {
-          new ReduxReactiveController(this, store, selector)
+        if (!(controllerSym in this)) {
+          const controller = new ReduxReactiveController(this, store, selector)
+
+          Object.defineProperty(this, controllerSym, {
+            value: controller,
+            enumerable: false,
+            configurable: false,
+            writable: false,
+          })
         }
 
         return selector(store.getState())
