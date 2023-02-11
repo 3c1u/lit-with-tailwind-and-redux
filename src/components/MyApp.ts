@@ -13,7 +13,7 @@ export class MyApp extends TwLitElement {
   }
 
   @state()
-  private shouldRender: boolean = false
+  private shouldRender: boolean = true
 
   render() {
     return html`
