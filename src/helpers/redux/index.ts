@@ -12,7 +12,8 @@ const selectorBase = <_RootState, _Value>(
     Object.defineProperty(target, propertyKey, {
       get() {
         if (!(controllerSym in this)) {
-          const controller = new ReduxReactiveController(this, store, selector)
+          const controller = new ReduxReactiveController(this, store)
+          controller.addSelector(propertyKey, selector)
 
           Object.defineProperty(this, controllerSym, {
             value: controller,
@@ -20,6 +21,13 @@ const selectorBase = <_RootState, _Value>(
             configurable: false,
             writable: false,
           })
+        } else {
+          const controller = this[controllerSym] as ReduxReactiveController<
+            _RootState,
+            Action
+          >
+
+          controller.addSelector(propertyKey, selector)
         }
 
         return selector(store.getState())

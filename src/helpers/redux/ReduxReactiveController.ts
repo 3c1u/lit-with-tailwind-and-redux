@@ -1,37 +1,52 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit'
 import { Store, Action } from 'redux'
 
-export class ReduxReactiveController<_RootState, _Action extends Action, _Value>
+export class ReduxReactiveController<_RootState, _Action extends Action>
   implements ReactiveController
 {
   host: ReactiveControllerHost
 
   private _store: Store<_RootState, _Action>
-  private _selector!: (state: _RootState) => _Value
   private _unsubscribe?: () => void
-  private _currentValue?: _Value
 
-  constructor(
-    host: ReactiveControllerHost,
-    store: Store<_RootState, _Action>,
-    selector: (state: _RootState) => _Value,
-  ) {
+  private _selectors: Array<(state: _RootState) => unknown> = []
+  private _availableProperties = new Set<string>()
+  private _currentValues: Array<unknown> = []
+
+  constructor(host: ReactiveControllerHost, store: Store<_RootState, _Action>) {
     this.host = host
     this._store = store
-    this._selector = selector
-    this._currentValue = selector(store.getState())
 
     host.addController(this)
   }
 
+  addSelector<_Value>(prop: string, selector: (state: _RootState) => _Value) {
+    if (this._availableProperties.has(prop)) {
+      return
+    }
+
+    this._availableProperties.add(prop)
+    this._selectors.push(selector)
+    this._currentValues.push(selector(this._store.getState()))
+  }
+
   hostConnected() {
-    this._store.subscribe(() => {
-      const newValue = this._selector(this._store.getState())
-      if (newValue === this._currentValue) {
+    this._unsubscribe = this._store.subscribe(() => {
+      console.log('subscribe')
+
+      const newValues = this._selectors.map(selector =>
+        selector(this._store.getState()),
+      )
+
+      const changed = newValues.some(
+        (newValue, index) => newValue !== this._currentValues[index],
+      )
+
+      if (!changed) {
         return
       }
 
-      this._currentValue = newValue
+      this._currentValues = newValues
       this.host.requestUpdate()
     })
   }
